@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
-import argparse
 import statistics
 import time
+
+import click
 
 from kubernetes import client, config
 from kubernetes.watch import Watch
 from loguru import logger
 
-# pin image version to avoid pulling every time
-POD_PREFIX = "bench-"
-CONTAINER_NAME = "bench-container"
+POD_PREFIX = "kbench-"
+CONTAINER_NAME = "kbench-container"
 NAMESPACE = "default"
 
 
@@ -79,20 +79,9 @@ def wait_for_cleanup(v1, pods):
                 return
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Benchmark pod startup and cleanup")
-    parser.add_argument("-n", "--num-pods", default=10, type=int,
-                        help="number of pods to launch")
-    parser.add_argument("-i", "--image", default="nginx:1.17.2",
-                        help="container image to use")
-
-    return parser.parse_args()
-
-
-def startup_pods(args, v1, pods):
-    for _ in range(args.num_pods):
-        pod_name = create_pod(v1, args.image)
+def startup_pods(num_pods, image, v1, pods):
+    for _ in range(num_pods):
+        pod_name = create_pod(v1, image)
         logger.trace("Pod {} created".format(pod_name))
         pods[pod_name] = PodLog(name=pod_name, created_at=time.monotonic())
 
@@ -107,7 +96,7 @@ def startup_pods(args, v1, pods):
     logger.info("Pod startup completed in {:.3f} [s]", end - start)
 
 
-def cleanup_pods(args, v1, pods):
+def cleanup_pods(num_pods, image, v1, pods):
     for pod_name in pods.keys():
         delete_pod(v1, pod_name)
         logger.trace("Pod {} deleted".format(pod_name))
@@ -124,10 +113,13 @@ def cleanup_pods(args, v1, pods):
     logger.info("Pod cleanup completed in {:.3f} [s]", end - start)
 
 
-def main():
-    args = parse_args()
-
-    logger.info("Will launch {} pods with image {}", args.num_pods, args.image)
+@click.command()
+@click.option("-n", "--num-pods", default=5, type=int,
+              help="number of pods to launch")
+@click.option("-i", "--image", default="nginx:1.17.2",
+              help="container image to use")
+def cli(num_pods, image):
+    logger.info("Will launch {} pods with image {}", num_pods, image)
 
     config.load_kube_config()
 
@@ -138,8 +130,8 @@ def main():
 
     pods = {}
 
-    startup_pods(args, v1, pods)
-    cleanup_pods(args, v1, pods)
+    startup_pods(num_pods, image, v1, pods)
+    cleanup_pods(num_pods, image, v1, pods)
 
     startup = [log.started_at - log.created_at for log in pods.values()]
     logger.info("Pod startup: min={:.3f} [s], avg={:.3f} [s], max={:.3f} [s]",
@@ -151,4 +143,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli()
