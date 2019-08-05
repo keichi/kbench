@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Benchmarking tool for Kubernetes clusters"
 authors = ["Keichi Takahashi <keichi.t@me.com>"]
 license = "MIT"
-repository = "git@github.com:keichi/kbench.git"
+repository = "https://github.com/keichi/kbench/"
+homepage = "https://github.com/keichi/kbench/"
 readme = "README.md"
 
 [tool.poetry.scripts]
