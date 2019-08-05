@@ -189,5 +189,79 @@ def pod_throughput(num_pods, image):
     print_stats(pods)
 
 
+def create_deployment(v1, image, num_replicas):
+    container = client.V1Container(name=CONTAINER_NAME, image=image)
+    container_spec = client.V1PodSpec(containers=[container])
+    meta = client.V1ObjectMeta(labels=dict(app="kbench"))
+    template_spec = client.V1PodTemplateSpec(spec=container_spec,
+                                             metadata=meta)
+    selector = client.V1LabelSelector(match_labels=dict(app="kbench"))
+    deployment_spec = client.V1DeploymentSpec(template=template_spec,
+                                              replicas=num_replicas,
+                                              selector=selector)
+    meta = client.V1ObjectMeta(generate_name="kbench-")
+    deployment_spec = client.V1Deployment(spec=deployment_spec, metadata=meta)
+
+    deployment = v1.create_namespaced_deployment(body=deployment_spec,
+                                                 namespace=NAMESPACE)
+
+    return deployment.metadata.name
+
+
+def delete_deployment(v1, name):
+    v1.delete_namespaced_deployment(name=name, namespace=NAMESPACE)
+
+
+def wait_for_deployment_rescale(v1, name, num_replicas):
+    watch = Watch()
+    for event in watch.stream(v1.list_namespaced_deployment,
+                              namespace=NAMESPACE):
+        deployment = event["object"]
+
+        if deployment.metadata.name != name:
+            continue
+
+        logger.info("Deployment {} has {} replicas", name,
+                    deployment.status.ready_replicas)
+
+        if deployment.status.ready_replicas == num_replicas:
+            return
+
+
+def rescale_deployment(v1, name, num_replicas):
+    logger.info("Rescaling deployment {} to {} replicas", name, num_replicas)
+
+    scale = client.V1Scale(spec=client.V1ScaleSpec(replicas=num_replicas))
+    v1.patch_namespaced_deployment_scale(name=name, namespace=NAMESPACE,
+                                         body=scale)
+
+
+@cli.command()
+@click.option("-i", "--image", default="nginx:1.17.2",
+              help="Container image to use.")
+def deployment_scaling(image):
+    """Measure deployment scale in/out latency."""
+    v1 = client.AppsV1Api()
+
+    logger.info("Connecting to Kubernetes master at {}",
+                v1.api_client.configuration.host)
+
+    deployment_name = create_deployment(v1, image, 3)
+
+    logger.trace("Deployment {} created".format(deployment_name))
+
+    wait_for_deployment_rescale(v1, deployment_name, 3)
+
+    rescale_deployment(v1, deployment_name, 5)
+
+    wait_for_deployment_rescale(v1, deployment_name, 5)
+
+    rescale_deployment(v1, deployment_name, 3)
+
+    wait_for_deployment_rescale(v1, deployment_name, 3)
+
+    delete_deployment(v1, deployment_name)
+
+
 if __name__ == "__main__":
     cli()
