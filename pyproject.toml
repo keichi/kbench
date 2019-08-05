@@ -8,7 +8,7 @@ repository = "git@github.com:keichi/kbench.git"
 readme = "README.md"
 
 [tool.poetry.scripts]
-kbench = "kbench.bench_pod:main"
+kbench = "kbench.bench_pod:cli"
 
 [tool.poetry.dependencies]
 python = "^3.7"

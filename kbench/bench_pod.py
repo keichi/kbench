@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-
 import statistics
+import sys
 import time
 
 import click
@@ -79,7 +78,84 @@ def wait_for_cleanup(v1, pods):
                 return
 
 
-def startup_pods(num_pods, image, v1, pods):
+def print_stats(pods):
+    startup = [log.started_at - log.created_at for log in pods.values()]
+    logger.info("Pod startup: min={:.3f} [s], avg={:.3f} [s], max={:.3f} [s]",
+                min(startup), statistics.mean(startup), max(startup))
+
+    cleanup = [log.exited_at - log.deleted_at for log in pods.values()]
+    logger.info("Pod cleanup: min={:.3f} [s], avg={:.3f} [s], max={:.3f} [s]",
+                min(cleanup), statistics.mean(cleanup), max(cleanup))
+
+
+@click.group()
+@click.option("-v", "--verbose", is_flag=True, help="Enable verbose logging.")
+def cli(verbose):
+    config.load_kube_config()
+
+    log_level = "INFO"
+    if verbose:
+        log_level = "TRACE"
+
+    handler = {
+        "sink": sys.stderr,
+        "format": "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> "
+                  "<level>{level}</level> {message}",
+        "level": log_level
+    }
+    logger.configure(handlers=[handler])
+
+
+@cli.command()
+@click.option("-n", "--num-pods", default=5, type=int,
+              help="Number of pods to launch.")
+@click.option("-i", "--image", default="nginx:1.17.2",
+              help="Container image to use.")
+def pod_latency(num_pods, image):
+    """Measure pod startup/cleanup latency."""
+    logger.info("Will launch {} pods with image {}", num_pods, image)
+
+    v1 = client.CoreV1Api()
+
+    logger.info("Connecting to Kubernetes master at {}",
+                v1.api_client.configuration.host)
+
+    pods = {}
+
+    for _ in range(num_pods):
+        pod_name = create_pod(v1, image)
+        pod_log = PodLog(name=pod_name, created_at=time.monotonic())
+
+        tmp = {pod_name: pod_log}
+
+        wait_for_startup(v1, tmp)
+
+        delete_pod(v1, pod_name)
+        pod_log.deleted_at = time.monotonic()
+
+        wait_for_cleanup(v1, tmp)
+
+        pods[pod_name] = pod_log
+
+    print_stats(pods)
+
+
+@cli.command()
+@click.option("-n", "--num-pods", default=5, type=int,
+              help="Number of pods to launch.")
+@click.option("-i", "--image", default="nginx:1.17.2",
+              help="Container image to use.")
+def pod_throughput(num_pods, image):
+    """Measure pod startup/cleanup throughput."""
+    logger.info("Will launch {} pods with image {}", num_pods, image)
+
+    v1 = client.CoreV1Api()
+
+    logger.info("Connecting to Kubernetes master at {}",
+                v1.api_client.configuration.host)
+
+    pods = {}
+
     for _ in range(num_pods):
         pod_name = create_pod(v1, image)
         logger.trace("Pod {} created".format(pod_name))
@@ -95,8 +171,6 @@ def startup_pods(num_pods, image, v1, pods):
 
     logger.info("Pod startup completed in {:.3f} [s]", end - start)
 
-
-def cleanup_pods(num_pods, image, v1, pods):
     for pod_name in pods.keys():
         delete_pod(v1, pod_name)
         logger.trace("Pod {} deleted".format(pod_name))
@@ -112,34 +186,7 @@ def cleanup_pods(num_pods, image, v1, pods):
 
     logger.info("Pod cleanup completed in {:.3f} [s]", end - start)
 
-
-@click.command()
-@click.option("-n", "--num-pods", default=5, type=int,
-              help="number of pods to launch")
-@click.option("-i", "--image", default="nginx:1.17.2",
-              help="container image to use")
-def cli(num_pods, image):
-    logger.info("Will launch {} pods with image {}", num_pods, image)
-
-    config.load_kube_config()
-
-    v1 = client.CoreV1Api()
-
-    logger.info("Connecting to Kubernetes master at {}",
-                v1.api_client.configuration.host)
-
-    pods = {}
-
-    startup_pods(num_pods, image, v1, pods)
-    cleanup_pods(num_pods, image, v1, pods)
-
-    startup = [log.started_at - log.created_at for log in pods.values()]
-    logger.info("Pod startup: min={:.3f} [s], avg={:.3f} [s], max={:.3f} [s]",
-                min(startup), statistics.mean(startup), max(startup))
-
-    cleanup = [log.exited_at - log.deleted_at for log in pods.values()]
-    logger.info("Pod cleanup: min={:.3f} [s], avg={:.3f} [s], max={:.3f} [s]",
-                min(cleanup), statistics.mean(cleanup), max(cleanup))
+    print_stats(pods)
 
 
 if __name__ == "__main__":
