@@ -31,3 +31,15 @@ $ kbench pod-latency
 
 - `-n`, `--num-pods`: Number of pods to launch.
 - `-i`, `--image`: Container image to use.
+
+### deployment-scaling
+
+Create a deployment and measure the time for rescaling its size.
+
+```
+$ kbench deployment-scaling
+```
+
+- `-i`, `--image`: Container image to use.
+- `-m`, `--num-replicas1`: Number of replicas.
+- `-n`, `--num-replicas2`: Number of replicas.
