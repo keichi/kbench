@@ -7,6 +7,13 @@ license = "MIT"
 repository = "https://github.com/keichi/kbench/"
 homepage = "https://github.com/keichi/kbench/"
 readme = "README.md"
+classifiers = [
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Benchmark"
+    "Topic :: Utilities",
+]
 
 [tool.poetry.scripts]
 kbench = "kbench.__main__:cli"
