@@ -9,7 +9,7 @@ homepage = "https://github.com/keichi/kbench/"
 readme = "README.md"
 
 [tool.poetry.scripts]
-kbench = "kbench.bench_pod:cli"
+kbench = "kbench.__main__:cli"
 
 [tool.poetry.dependencies]
 python = "^3.7"
