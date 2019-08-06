@@ -26,18 +26,17 @@ def timer(name):
 @click.group()
 @click.version_option()
 @click.option("-v", "--verbose", is_flag=True, help="Enable verbose logging.")
-def cli(verbose):
-    config.load_kube_config()
-
-    log_level = "INFO"
-    if verbose:
-        log_level = "TRACE"
+@click.option("--kubeconfig", help="Path to kubeconfig file.")
+@click.option("--context", help="Kubeconfig context to use.")
+@click.pass_context
+def cli(ctx, verbose, kubeconfig, context):
+    config.load_kube_config(config_file=kubeconfig, context=context)
 
     handler = {
         "sink": sys.stderr,
         "format": "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> "
                   "<level>{level}</level> {message}",
-        "level": log_level
+        "level": "TRACE" if verbose else "INFO"
     }
     logger.configure(handlers=[handler])
 
