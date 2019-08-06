@@ -4,10 +4,8 @@
 
 ## Installation
 
-Currently, kbench is available on TestPyPI.
-
 ```
-$ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple kbench
+$ pip install kbench
 ```
 
 ## Usage
