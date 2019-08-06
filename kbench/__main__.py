@@ -41,6 +41,16 @@ def cli(verbose):
     }
     logger.configure(handlers=[handler])
 
+    try:
+        logger.info("Connecting to Kubernetes master at {}",
+                    client.Configuration().host)
+        api = client.CoreApi()
+        api.get_api_versions()
+
+    except Exception:
+        logger.error("Failed connecting to Kubernetes master")
+        ctx.abort()
+
 
 @cli.command()
 @click.option("-n", "--num-pods", default=5, type=int,
@@ -52,9 +62,6 @@ def pod_latency(num_pods, image):
     logger.info("Will launch {} pods with image {}", num_pods, image)
 
     v1 = client.CoreV1Api()
-
-    logger.info("Connecting to Kubernetes master at {}",
-                v1.api_client.configuration.host)
 
     pods = {}
 
@@ -86,9 +93,6 @@ def pod_throughput(num_pods, image):
     logger.info("Will launch {} pods with image {}", num_pods, image)
 
     v1 = client.CoreV1Api()
-
-    logger.info("Connecting to Kubernetes master at {}",
-                v1.api_client.configuration.host)
 
     pods = {}
 
@@ -125,9 +129,6 @@ def pod_throughput(num_pods, image):
 def deployment_scaling(image, num_init_replicas, num_target_replicas):
     """Measure deployment scale-in/out latency."""
     v1 = client.AppsV1Api()
-
-    logger.info("Connecting to Kubernetes master at {}",
-                v1.api_client.configuration.host)
 
     with timer("Deployment creation"):
         deployment_name = create_deployment(v1, image, num_init_replicas)
