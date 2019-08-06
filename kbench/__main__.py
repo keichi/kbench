@@ -91,24 +91,24 @@ def pod_throughput(num_pods, image):
 
     pods = {}
 
-    for _ in range(num_pods):
-        pod_name = create_pod(v1, image)
-        logger.trace("Pod {} created", pod_name)
-        pods[pod_name] = PodLog(name=pod_name, created_at=time.monotonic())
-
-    logger.info("Waiting for pods to start")
-
     with timer("Pod startup"):
+        for _ in range(num_pods):
+            pod_name = create_pod(v1, image)
+            logger.trace("Pod {} created", pod_name)
+            pods[pod_name] = PodLog(name=pod_name, created_at=time.monotonic())
+
+        logger.info("Waiting for pods to start")
+
         wait_for_startup(v1, pods)
 
-    for pod_name in pods.keys():
-        delete_pod(v1, pod_name)
-        logger.trace("Pod {} deleted", pod_name)
-        pods[pod_name].deleted_at = time.monotonic()
-
-    logger.info("Waiting for pods to exit")
-
     with timer("Pod cleanup"):
+        for pod_name in pods.keys():
+            delete_pod(v1, pod_name)
+            logger.trace("Pod {} deleted", pod_name)
+            pods[pod_name].deleted_at = time.monotonic()
+
+        logger.info("Waiting for pods to exit")
+
         wait_for_cleanup(v1, pods)
 
     print_stats(pods)
@@ -117,33 +117,34 @@ def pod_throughput(num_pods, image):
 @cli.command()
 @click.option("-i", "--image", default="nginx:1.17.2",
               help="Container image to use.")
-@click.option("-m", "--num-replicas1", type=int, default=3,
-              help="Number of replicas")
-@click.option("-n", "--num-replicas2", type=int, default=5,
-              help="Number of replicas")
-def deployment_scaling(image, num_replicas1, num_replicas2):
-    """Measure deployment scale in/out latency."""
+@click.option("-m", "--num-init-replicas", type=int, default=3,
+              help="Initial number of replicas")
+@click.option("-n", "--num-target-replicas", type=int, default=5,
+              help="Target number of replicas.")
+def deployment_scaling(image, num_init_replicas, num_target_replicas):
+    """Measure deployment scale-in/out latency."""
     v1 = client.AppsV1Api()
 
     logger.info("Connecting to Kubernetes master at {}",
                 v1.api_client.configuration.host)
 
     with timer("Deployment creation"):
-        deployment_name = create_deployment(v1, image, num_replicas1)
-        wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
-        logger.trace("Deployment {} created", deployment_name)
+        deployment_name = create_deployment(v1, image, num_init_replicas)
+        wait_for_deployment_rescale(v1, deployment_name, num_init_replicas)
+        logger.info("Deployment {} created with {} replicas", deployment_name,
+                    num_init_replicas)
 
     with timer("Deployment scale-out"):
-        rescale_deployment(v1, deployment_name, num_replicas2)
-        wait_for_deployment_rescale(v1, deployment_name, num_replicas2)
+        rescale_deployment(v1, deployment_name, num_target_replicas)
+        wait_for_deployment_rescale(v1, deployment_name, num_target_replicas)
         logger.trace("Deployment {} scaled to {} replicas", deployment_name,
-                     num_replicas2)
+                     num_target_replicas)
 
     with timer("Deployment scale-in"):
-        rescale_deployment(v1, deployment_name, num_replicas1)
-        wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
+        rescale_deployment(v1, deployment_name, num_init_replicas)
+        wait_for_deployment_rescale(v1, deployment_name, num_init_replicas)
         logger.trace("Deployment {} scaled to {} replicas", deployment_name,
-                     num_replicas1)
+                     num_init_replicas)
 
     delete_deployment(v1, deployment_name)
 

@@ -2,7 +2,7 @@ from kubernetes import client
 from kubernetes.watch import Watch
 from loguru import logger
 
-from .consts import CONTAINER_NAME, NAMESPACE
+from .consts import CONTAINER_NAME, DEPLOYMENT_PREFIX, NAMESPACE
 
 
 def create_deployment(v1, image, num_replicas):
@@ -15,7 +15,7 @@ def create_deployment(v1, image, num_replicas):
     deployment_spec = client.V1DeploymentSpec(template=template_spec,
                                               replicas=num_replicas,
                                               selector=selector)
-    meta = client.V1ObjectMeta(generate_name="kbench-")
+    meta = client.V1ObjectMeta(generate_name=DEPLOYMENT_PREFIX)
     deployment_spec = client.V1Deployment(spec=deployment_spec, metadata=meta)
 
     deployment = v1.create_namespaced_deployment(body=deployment_spec,

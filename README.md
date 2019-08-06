@@ -34,12 +34,15 @@ $ kbench pod-latency
 
 ### deployment-scaling
 
-Create a deployment and measure the time for rescaling its size.
+Create a deployment and measure scale-in/out latency. First, a deployment with
+`m` replicas is created. Then, the deployment is scaled-out to `n` replicas.
+Once the scale-out is completed, the deployment is scaled-in to `m` replicas
+again.
 
 ```
 $ kbench deployment-scaling
 ```
 
 - `-i`, `--image`: Container image to use.
-- `-m`, `--num-replicas1`: Number of replicas.
-- `-n`, `--num-replicas2`: Number of replicas.
+- `-m`, `--num-init-replicas`: Initial number of replicas.
+- `-n`, `--num-target-replicas`: Target number of replicas.
