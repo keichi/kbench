@@ -1,6 +1,8 @@
 import sys
 import time
 
+from contextlib import contextmanager
+
 import click
 
 from kubernetes import config, client
@@ -10,6 +12,15 @@ from .pod import PodLog, create_pod, wait_for_startup, delete_pod, \
                  wait_for_cleanup, print_stats
 from .deployment import create_deployment, delete_deployment, \
                         rescale_deployment, wait_for_deployment_rescale
+
+
+@contextmanager
+def timer(name):
+    start = time.monotonic()
+    yield
+    end = time.monotonic()
+
+    logger.info("{} completed in {:.3f} [s]", name, end - start)
 
 
 @click.group()
@@ -82,33 +93,23 @@ def pod_throughput(num_pods, image):
 
     for _ in range(num_pods):
         pod_name = create_pod(v1, image)
-        logger.trace("Pod {} created".format(pod_name))
+        logger.trace("Pod {} created", pod_name)
         pods[pod_name] = PodLog(name=pod_name, created_at=time.monotonic())
 
     logger.info("Waiting for pods to start")
 
-    start = time.monotonic()
-
-    wait_for_startup(v1, pods)
-
-    end = time.monotonic()
-
-    logger.info("Pod startup completed in {:.3f} [s]", end - start)
+    with timer("Pod startup"):
+        wait_for_startup(v1, pods)
 
     for pod_name in pods.keys():
         delete_pod(v1, pod_name)
-        logger.trace("Pod {} deleted".format(pod_name))
+        logger.trace("Pod {} deleted", pod_name)
         pods[pod_name].deleted_at = time.monotonic()
 
     logger.info("Waiting for pods to exit")
 
-    start = time.monotonic()
-
-    wait_for_cleanup(v1, pods)
-
-    end = time.monotonic()
-
-    logger.info("Pod cleanup completed in {:.3f} [s]", end - start)
+    with timer("Pod cleanup"):
+        wait_for_cleanup(v1, pods)
 
     print_stats(pods)
 
@@ -127,23 +128,24 @@ def deployment_scaling(image, num_replicas1, num_replicas2):
     logger.info("Connecting to Kubernetes master at {}",
                 v1.api_client.configuration.host)
 
-    deployment_name = create_deployment(v1, image, num_replicas1)
+    with timer("Deployment creation"):
+        deployment_name = create_deployment(v1, image, num_replicas1)
+        wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
+        logger.trace("Deployment {} created", deployment_name)
 
-    logger.trace("Deployment {} created".format(deployment_name))
+    with timer("Deployment scale-out"):
+        rescale_deployment(v1, deployment_name, num_replicas2)
+        wait_for_deployment_rescale(v1, deployment_name, num_replicas2)
+        logger.trace("Deployment {} scaled to {} replicas", deployment_name,
+                     num_replicas2)
 
-    wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
-
-    rescale_deployment(v1, deployment_name, num_replicas2)
-
-    wait_for_deployment_rescale(v1, deployment_name, num_replicas2)
-
-    rescale_deployment(v1, deployment_name, num_replicas1)
-
-    wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
+    with timer("Deployment scale-in"):
+        rescale_deployment(v1, deployment_name, num_replicas1)
+        wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
+        logger.trace("Deployment {} scaled to {} replicas", deployment_name,
+                     num_replicas1)
 
     delete_deployment(v1, deployment_name)
-
-    logger.trace("Deployment {} deleted".format(deployment_name))
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ def delete_deployment(v1, name):
     v1.delete_namespaced_deployment(name=name, namespace=NAMESPACE)
 
 
-def wait_for_deployment_rescale(v1, name, num_replicas):
+def wait_for_deployment_rescale(v1, name, target_replicas):
     watch = Watch()
     for event in watch.stream(v1.list_namespaced_deployment,
                               namespace=NAMESPACE):
@@ -37,10 +37,14 @@ def wait_for_deployment_rescale(v1, name, num_replicas):
         if deployment.metadata.name != name:
             continue
 
-        logger.trace("Deployment {} has {} replicas", name,
-                     deployment.status.ready_replicas)
+        ready_replicas = deployment.status.ready_replicas
 
-        if deployment.status.ready_replicas == num_replicas:
+        if ready_replicas is None:
+            ready_replicas = 0
+
+        logger.trace("Deployment {} has {} replicas", name, ready_replicas)
+
+        if ready_replicas == target_replicas:
             return
 
 
