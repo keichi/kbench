@@ -1,4 +1,4 @@
-# kbench
+# kbench [![CircleCI](https://circleci.com/gh/keichi/kbench.svg?style=svg)](https://circleci.com/gh/keichi/kbench)
 
 ## Installation
 

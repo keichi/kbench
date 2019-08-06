@@ -1,0 +1,27 @@
+version: 2
+jobs:
+  check:
+    docker:
+      - image: circleci/python:3.7.4
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "poetry.lock" }}
+
+      - run:
+          name: Install dependencies
+          command: |
+            poetry install
+
+      - save_cache:
+          paths:
+            - /home/circleci/.cache/pypoetry/virtualenvs
+          key: v1-dependencies-{{ checksum "poetry.lock" }}
+
+      - run:
+          name: Run style check
+          command: |
+            poetry run flake8 kbench
