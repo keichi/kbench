@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kbench"
-version = "0.2.0"
+version = "0.2.1"
 description = "Benchmarking tool for Kubernetes clusters"
 authors = ["Keichi Takahashi <keichi.t@me.com>"]
 license = "MIT"
@@ -11,8 +11,8 @@ classifiers = [
     "Environment :: Console",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: System :: Benchmark"
-    "Topic :: Utilities",
+    "Topic :: System :: Benchmark",
+    "Topic :: Utilities"
 ]
 
 [tool.poetry.scripts]
