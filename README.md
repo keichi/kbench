@@ -1,6 +1,6 @@
 # kbench
 [![CircleCI](https://circleci.com/gh/keichi/kbench.svg?style=svg)](https://circleci.com/gh/keichi/kbench)
-[![PyPI](https://img.shields.io/pypi/v/kbench?style=flat-square)](https://test.pypi.org/project/kbench)
+[![PyPI](https://img.shields.io/pypi/v/kbench?style=flat-square)](https://pypi.org/project/kbench)
 
 ## Installation
 
