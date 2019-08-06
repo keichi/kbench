@@ -221,8 +221,8 @@ def wait_for_deployment_rescale(v1, name, num_replicas):
         if deployment.metadata.name != name:
             continue
 
-        logger.info("Deployment {} has {} replicas", name,
-                    deployment.status.ready_replicas)
+        logger.trace("Deployment {} has {} replicas", name,
+                     deployment.status.ready_replicas)
 
         if deployment.status.ready_replicas == num_replicas:
             return
@@ -239,28 +239,34 @@ def rescale_deployment(v1, name, num_replicas):
 @cli.command()
 @click.option("-i", "--image", default="nginx:1.17.2",
               help="Container image to use.")
-def deployment_scaling(image):
+@click.option("-m", "--num-replicas1", type=int, default=3,
+              help="Number of replicas")
+@click.option("-n", "--num-replicas2", type=int, default=5,
+              help="Number of replicas")
+def deployment_scaling(image, num_replicas1, num_replicas2):
     """Measure deployment scale in/out latency."""
     v1 = client.AppsV1Api()
 
     logger.info("Connecting to Kubernetes master at {}",
                 v1.api_client.configuration.host)
 
-    deployment_name = create_deployment(v1, image, 3)
+    deployment_name = create_deployment(v1, image, num_replicas1)
 
     logger.trace("Deployment {} created".format(deployment_name))
 
-    wait_for_deployment_rescale(v1, deployment_name, 3)
+    wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
 
-    rescale_deployment(v1, deployment_name, 5)
+    rescale_deployment(v1, deployment_name, num_replicas2)
 
-    wait_for_deployment_rescale(v1, deployment_name, 5)
+    wait_for_deployment_rescale(v1, deployment_name, num_replicas2)
 
-    rescale_deployment(v1, deployment_name, 3)
+    rescale_deployment(v1, deployment_name, num_replicas1)
 
-    wait_for_deployment_rescale(v1, deployment_name, 3)
+    wait_for_deployment_rescale(v1, deployment_name, num_replicas1)
 
     delete_deployment(v1, deployment_name)
+
+    logger.trace("Deployment {} deleted".format(deployment_name))
 
 
 if __name__ == "__main__":
