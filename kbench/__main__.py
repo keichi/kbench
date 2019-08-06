@@ -24,6 +24,7 @@ def timer(name):
 
 
 @click.group()
+@click.version_option()
 @click.option("-v", "--verbose", is_flag=True, help="Enable verbose logging.")
 def cli(verbose):
     config.load_kube_config()
