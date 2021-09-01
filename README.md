@@ -20,6 +20,7 @@ $ kbench pod-throughput
 
 - `-n`, `--num-pods`: Number of pods to launch.
 - `-i`, `--image`: Container image to use.
+- `--timings` / `--no-timings`:  Print timing information for all pods.
 
 ### pod-latency
 
@@ -31,6 +32,7 @@ $ kbench pod-latency
 
 - `-n`, `--num-pods`: Number of pods to launch.
 - `-i`, `--image`: Container image to use.
+- `--timings` / `--no-timings`:  Print timing information for all pods.
 
 ### deployment-scaling
 

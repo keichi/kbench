@@ -80,3 +80,10 @@ def print_stats(pods):
     cleanup = [log.exited_at - log.deleted_at for log in pods.values()]
     logger.info("Pod cleanup: min={:.3f} [s], avg={:.3f} [s], max={:.3f} [s]",
                 min(cleanup), statistics.mean(cleanup), max(cleanup))
+
+
+def print_timings(pods):
+    print("name, created_at, started_at, deleted_at, exited_at")
+    for name, log in pods.items():
+        print(f"{name}, {log.created_at}, {log.started_at}, {log.deleted_at}, "
+              f"{log.exited_at}")

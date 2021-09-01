@@ -9,9 +9,9 @@ from kubernetes import config, client
 from loguru import logger
 
 from .pod import PodLog, create_pod, wait_for_startup, delete_pod, \
-                 wait_for_cleanup, print_stats
+    wait_for_cleanup, print_stats, print_timings
 from .deployment import create_deployment, delete_deployment, \
-                        rescale_deployment, wait_for_deployment_rescale
+    rescale_deployment, wait_for_deployment_rescale
 
 
 @contextmanager
@@ -56,9 +56,11 @@ def cli(ctx, verbose, kubeconfig, context):
               help="Number of pods to launch.")
 @click.option("-i", "--image", default="nginx:1.17.2",
               help="Container image to use.")
-def pod_latency(num_pods, image):
+@click.option("--timings/--no-timings", default=False, type=bool,
+              help="Print timings for all pods.")
+def pod_latency(num_pods, image, timings):
     """Measure pod startup/cleanup latency."""
-    logger.info("Will launch {} pods with image {}", num_pods, image)
+    logger.info("Launching {} pods with image {}", num_pods, image)
 
     v1 = client.CoreV1Api()
 
@@ -81,15 +83,20 @@ def pod_latency(num_pods, image):
 
     print_stats(pods)
 
+    if timings:
+        print_timings(pods)
+
 
 @cli.command()
 @click.option("-n", "--num-pods", default=5, type=int,
               help="Number of pods to launch.")
 @click.option("-i", "--image", default="nginx:1.17.2",
               help="Container image to use.")
-def pod_throughput(num_pods, image):
+@click.option("--timings/--no-timings", default=False, type=bool,
+              help="Print timings for all pods.")
+def pod_throughput(num_pods, image, timings):
     """Measure pod startup/cleanup throughput."""
-    logger.info("Will launch {} pods with image {}", num_pods, image)
+    logger.info("Launching {} pods with image {}", num_pods, image)
 
     v1 = client.CoreV1Api()
 
@@ -116,6 +123,9 @@ def pod_throughput(num_pods, image):
         wait_for_cleanup(v1, pods)
 
     print_stats(pods)
+
+    if timings:
+        print_timings(pods)
 
 
 @cli.command()
