@@ -18,15 +18,19 @@ class PodLog:
         self.exited_at = exited_at
 
 
-def create_pod(v1, image):
+def create_pod(v1, image, node_selector):
     container = client.V1Container(name=CONTAINER_NAME, image=image)
-    spec = client.V1PodSpec(containers=[container])
+    spec = client.V1PodSpec(containers=[container],
+                            node_selector=node_selector)
     meta = client.V1ObjectMeta(generate_name=POD_PREFIX)
     pod = client.V1Pod(spec=spec, metadata=meta)
 
     ret = v1.create_namespaced_pod(NAMESPACE, pod)
+    name = ret.metadata.name
 
-    return ret.metadata.name
+    logger.trace("Pod {} created", name)
+
+    return name
 
 
 def wait_for_startup(v1, pods):
@@ -50,6 +54,8 @@ def wait_for_startup(v1, pods):
 
 def delete_pod(v1, name):
     v1.delete_namespaced_pod(name=name, namespace=NAMESPACE)
+
+    logger.trace("Pod {} deleted", name)
 
 
 def wait_for_cleanup(v1, pods):

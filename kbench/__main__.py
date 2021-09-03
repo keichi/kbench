@@ -58,16 +58,21 @@ def cli(ctx, verbose, kubeconfig, context):
               help="Container image to use.")
 @click.option("--timings/--no-timings", default=False, type=bool,
               help="Print timings for all pods.")
-def pod_latency(num_pods, image, timings):
+@click.option("--node-selector", type=str, multiple=True,
+              help="Node selector (key=value).")
+def pod_latency(num_pods, image, timings, node_selector):
     """Measure pod startup/cleanup latency."""
-    logger.info("Launching {} pods with image {}", num_pods, image)
+    node_selector = dict([kv.split("=") for kv in node_selector])
+
+    logger.info("Launching {} pods with image {} and node selector {}",
+                num_pods, image, node_selector)
 
     v1 = client.CoreV1Api()
 
     pods = {}
 
     for _ in range(num_pods):
-        pod_name = create_pod(v1, image)
+        pod_name = create_pod(v1, image, node_selector)
         pod_log = PodLog(name=pod_name, created_at=time.monotonic())
 
         tmp = {pod_name: pod_log}
@@ -94,9 +99,14 @@ def pod_latency(num_pods, image, timings):
               help="Container image to use.")
 @click.option("--timings/--no-timings", default=False, type=bool,
               help="Print timings for all pods.")
-def pod_throughput(num_pods, image, timings):
+@click.option("--node-selector", type=str, multiple=True,
+              help="Node selector (key=value).")
+def pod_throughput(num_pods, image, timings, node_selector):
     """Measure pod startup/cleanup throughput."""
-    logger.info("Launching {} pods with image {}", num_pods, image)
+    node_selector = dict([kv.split("=") for kv in node_selector])
+
+    logger.info("Launching {} pods with image {} and node selector {}",
+                num_pods, image, node_selector)
 
     v1 = client.CoreV1Api()
 
@@ -104,9 +114,9 @@ def pod_throughput(num_pods, image, timings):
 
     with timer("Pod startup"):
         for _ in range(num_pods):
-            pod_name = create_pod(v1, image)
-            logger.trace("Pod {} created", pod_name)
-            pods[pod_name] = PodLog(name=pod_name, created_at=time.monotonic())
+            pod_name = create_pod(v1, image, node_selector)
+            pods[pod_name] = PodLog(
+                name=pod_name, created_at=time.monotonic())
 
         logger.info("Waiting for pods to start")
 
@@ -115,7 +125,6 @@ def pod_throughput(num_pods, image, timings):
     with timer("Pod cleanup"):
         for pod_name in pods.keys():
             delete_pod(v1, pod_name)
-            logger.trace("Pod {} deleted", pod_name)
             pods[pod_name].deleted_at = time.monotonic()
 
         logger.info("Waiting for pods to exit")
