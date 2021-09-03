@@ -2,10 +2,15 @@
 [![CircleCI](https://circleci.com/gh/keichi/kbench.svg?style=svg)](https://circleci.com/gh/keichi/kbench)
 [![PyPI](https://img.shields.io/pypi/v/kbench?style=flat-square)](https://pypi.org/project/kbench)
 
+kbench is a benchmarking tool for measuring the control plane performance of a
+Kubernetes cluster.
+
 ## Installation
 
+kbench is available on PyPI.
+
 ```
-$ pip install kbench
+$ pip3 install kbench
 ```
 
 ## Usage

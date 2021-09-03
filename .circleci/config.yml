@@ -1,33 +1,24 @@
 version: 2
 
-defaults: &defaults
-  docker:
-    - image: circleci/python:3
-
 jobs:
 
   test:
-    <<: *defaults
+    docker:
+      - image: circleci/python:3
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "poetry.lock" }}
       - run:
           name: Install dependencies
           command: |
             poetry install
-      - save_cache:
-          paths:
-            - /home/circleci/.cache/pypoetry/virtualenvs
-          key: v1-dependencies-{{ checksum "poetry.lock" }}
       - run:
           name: Check coding style
           command: |
             poetry run flake8 kbench
 
   publish:
-    <<: *defaults
+    docker:
+      - image: circleci/python:3
     steps:
       - checkout
       - run:
@@ -35,6 +26,37 @@ jobs:
           command: >
             poetry publish --build --no-interaction
             --username "${PYPI_USERNAME}" --password "${PYPI_PASSWORD}"
+
+  e2e:
+    machine:
+      image: ubuntu-2004:202107-02
+    steps:
+      - checkout
+      - run:
+          name: Install kind
+          command: |
+            curl -L -o kind https://github.com/kubernetes-sigs/kind/releases/download/v0.4.0/kind-linux-amd64
+            sudo install -o root -g root -m 0755 kind /usr/local/bin/kind
+      - run:
+          name: Create Kubernetes cluster
+          command: kind create cluster
+      - run:
+          name: Install dependencies
+          command: |
+            pip3 install poetry
+            poetry install
+      - run:
+          name: Test pod-latency benchmark
+          command: |
+            KUBECONFIG="$(kind get kubeconfig-path --name="kind")" poetry run python3 -m kbench -v pod-latency -n 3
+      - run:
+          name: Test pod-throughput benchmark
+          command: |
+            KUBECONFIG="$(kind get kubeconfig-path --name="kind")" poetry run python3 -m kbench -v pod-throughput -n 3
+      - run:
+          name: Test deployment-scaling benchmark
+          command: |
+            KUBECONFIG="$(kind get kubeconfig-path --name="kind")" poetry run python3 -m kbench -v deployment-scaling -m 2 -n 3
 
 workflows:
   version: 2
@@ -45,9 +67,14 @@ workflows:
           filters:
             tags:
               only: /^v[0-9]+(\.[0-9]+)*/
+      - e2e:
+          filters:
+            tags:
+              only: /^v[0-9]+(\.[0-9]+)*/
       - publish:
           requires:
             - test
+            - e2e
           filters:
             tags:
               only: /^v[0-9]+(\.[0-9]+)*/
